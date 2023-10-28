@@ -1,0 +1,69 @@
+# Création d'un réseau bridge nommé my-bridge
+docker network create --driver bridge my-bridge
+
+# Lister les réseaux Docker
+docker network ls
+
+# Récolter des informations sur le réseau Docker
+docker network inspect my-bridge
+
+# Connecter deux conteneurs au réseau my-bridge
+docker run -dit --name alpine1 --network my-bridge alpine
+docker run -dit --name alpine2 --network my-bridge alpine
+
+# Vérification
+docker network inspect my-bridge
+
+# Ping entre les deux containers
+docker exec alpine1 ping -c 4 172.18.0.3
+
+# Utiliser le réseau host
+docker run --rm -d --network host --name myprox nginx
+docker exec -it myprox bash
+apt update
+apt install net-tools
+netstat -tulpn | grep :80
+
+# Arrêter le conteneur (il sera supprimé automatiquement car démarré avec l’option --rm)
+docker container stop my_httpd
+
+# Supprimer un réseau Docker
+docker network disconnect my-bridge alpine1
+docker network disconnect my-bridge alpine2
+
+# Vérification
+docker network inspect my-bridge
+
+# Supprimer le réseau
+docker network rm my-bridge
+
+# Vérification
+docker network ls
+
+# Vérification de l’adresse de containers
+docker inspect alpine1 | grep "IPAddress"
+docker inspect alpine2 | grep "IPAddress"
+
+# Surcharge des valeurs de subnet
+docker network create --driver bridge --subnet=172.20.10.0/24 --gateway=172.20.10.1 my-bridge
+
+# Création d'un réseau macvlan
+docker network create -d macvlan --subnet=192.168.1.0/24 --gateway=192.168.1.254 -o parent=ens33 my-vlan
+
+# Vérification
+docker network inspect my-vlan
+
+# Association avec 2 containers
+docker network connect my-vlan alpine1
+docker run -dit --name web1 --network my-vlan httpd
+
+# Vérification
+docker inspect alpine1 | grep "IPAddress"
+docker inspect web1 | grep "IPAddress"
+
+# Astuce pour résoudre le problème d'accès depuis d'autres postes
+sudo ip link add macvlan_int link ens33 type macvlan mode bridge
+sudo ip address add 192.168.1.1/32 dev macvlan_int
+sudo ip address add 192.168.1.2/32 dev macvlan_int
+sudo ip link set macvlan_int up
+sudo ip route add ip-de_l’hote/24 dev macvlan_int
